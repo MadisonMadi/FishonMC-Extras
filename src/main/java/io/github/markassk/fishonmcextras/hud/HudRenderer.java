@@ -12,6 +12,8 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.text.Text;
 
 import java.io.IOException;
@@ -282,6 +284,46 @@ public class HudRenderer implements HudRenderCallback {
         }
     }
 
+    public void checkInventorySpace(PlayerEntity player, DrawContext context) {
+        PlayerInventory inventory = player.getInventory();
+        FishOnMCExtrasConfig config = FishOnMCExtrasClient.CONFIG;
+        TextRenderer textRenderer = client.textRenderer;
+        int WARNING_THRESHOLD = config.fullInvHUDConfig.FullInvHUDWarningSlot;
+        int emptySlots = 0;
+
+        // Check main inventory (including hotbar)
+        for (int i = 0; i < 36; i++) { //  0-8 are hotbar slots / 9-35 are main inventory slots
+            if (inventory.getStack(i).isEmpty()) {
+                emptySlots++;
+            }
+        }
+
+        if (emptySlots <= WARNING_THRESHOLD) {
+            String warningText = "Warning! Only " + emptySlots + " empty slots left!";
+            context.getMatrices().push();
+            try {
+                // Use configurable font size
+                float scale = config.fullInvHUDConfig.FullInvFontSize / 10f;
+                context.getMatrices().scale(scale, scale, 1f);
+
+                // Gets screen size
+                int screenWidth = client.getWindow().getScaledWidth();
+                int screenHeight = client.getWindow().getScaledHeight();
+
+                // Position calculation
+                int textWidth = textRenderer.getWidth(warningText);
+                int x = (int) (((float) screenWidth / 2 - textWidth * scale / 2) / scale);
+                int y = (int) ((screenHeight - 45) / scale);
+
+                // Text Color and Shadows
+                int color = config.fullInvHUDConfig.FullInvFontColor;
+
+                context.drawText(textRenderer, warningText, x, y, color, config.fullInvHUDConfig.FullInvHUDShadows);
+            } finally {
+                context.getMatrices().pop();
+            }
+        }
+    }
 
 
     @Override
@@ -386,25 +428,35 @@ public class HudRenderer implements HudRenderCallback {
 
                     scaledYHolder[0] += lineHeight;
                 }
-                if ((config.fishHUDToggles.showAdult || config.fishHUDToggles.showLarge || config.fishHUDToggles.showGigantic) && !config.fishHUDToggles.showRarities) {
+                if ((config.fishHUDToggles.showBaby || config.fishHUDToggles.showJuvenile || config.fishHUDToggles.showAdult || config.fishHUDToggles.showLarge || config.fishHUDToggles.showGigantic) && !config.fishHUDToggles.showRarities) {
                     scaledYHolder[0] += lineHeight;
                 }
 
+                // Baby section
+                if (config.fishHUDToggles.showBaby) {
+                    drawHudLine(drawContext, textRenderer, "ʙᴀʙʏ", displaySizeCounts.getOrDefault("baby", 0), displayFishCaughtCount, config.fishHUDConfig.showSizePercentages, 0xFFFFFF, scaledX, scaledYHolder, shadows, lineHeight);
+                    drawContext.drawText(textRenderer, "ʙᴀʙʏ ", scaledX, scaledYHolder[0] - lineHeight, 0x468CE7, shadows);
+                }
+                // Juvenile section
+                if (config.fishHUDToggles.showJuvenile) {
+                    drawHudLine(drawContext, textRenderer, "ᴊᴜᴠᴇɴɪʟᴇ", displaySizeCounts.getOrDefault("juvenile", 0), displayFishCaughtCount, config.fishHUDConfig.showSizePercentages, 0xFFFFFF, scaledX, scaledYHolder, shadows, lineHeight);
+                    drawContext.drawText(textRenderer, "ᴊᴜᴠᴇɴɪʟᴇ ", scaledX, scaledYHolder[0] - lineHeight, 0x22EA08, shadows);
+                }
                 // Adult section
                 if (config.fishHUDToggles.showAdult) {
                     drawHudLine(drawContext, textRenderer, "ᴀᴅᴜʟᴛ", displaySizeCounts.getOrDefault("adult", 0), displayFishCaughtCount, config.fishHUDConfig.showSizePercentages, 0xFFFFFF, scaledX, scaledYHolder, shadows, lineHeight);
-                    drawContext.drawText(textRenderer, "ᴀᴅᴜʟᴛ ", scaledX, scaledYHolder[0] - lineHeight, 0x4699C9, shadows);
+                    drawContext.drawText(textRenderer, "ᴀᴅᴜʟᴛ ", scaledX, scaledYHolder[0] - lineHeight, 0x1C7DA0, shadows);
                 }
                 // Large section
                 if (config.fishHUDToggles.showLarge) {
                     drawHudLine(drawContext, textRenderer, "ʟᴀʀɢᴇ", displaySizeCounts.getOrDefault("large", 0), displayFishCaughtCount, config.fishHUDConfig.showSizePercentages, 0xFFFFFF, scaledX, scaledYHolder, shadows, lineHeight);
-                    drawContext.drawText(textRenderer, "ʟᴀʀɢᴇ ", scaledX, scaledYHolder[0] - lineHeight, 0xBF8B27, shadows);
+                    drawContext.drawText(textRenderer, "ʟᴀʀɢᴇ ", scaledX, scaledYHolder[0] - lineHeight, 0xFF9000, shadows);
                 }
 
                 // Gigantics section
                 if (config.fishHUDToggles.showGigantic) {
                     drawHudLine(drawContext, textRenderer, "ɢɪɢᴀɴᴛɪᴄ", displaySizeCounts.getOrDefault("gigantic", 0), displayFishCaughtCount, config.fishHUDConfig.showSizePercentages, 0xFFFFFF, scaledX, scaledYHolder, shadows, lineHeight);
-                    drawContext.drawText(textRenderer, "ɢɪɢᴀɴᴛɪᴄ ", scaledX, scaledYHolder[0] - lineHeight, 0xFF0000, shadows);
+                    drawContext.drawText(textRenderer, "ɢɪɢᴀɴᴛɪᴄ ", scaledX, scaledYHolder[0] - lineHeight, 0xAF3333, shadows);
                 }
 
 
@@ -439,15 +491,15 @@ public class HudRenderer implements HudRenderCallback {
                                     .mapToInt(Map.Entry::getValue)
                                     .sum();
 
-                            drawContext.drawText(textRenderer, "ᴜɴɪǫᴜᴇ " + othersSum, scaledX, scaledYHolder[0], 0xFFFFFF, shadows);
-                            drawContext.drawText(textRenderer, "ᴜɴɪǫᴜᴇ ", scaledX, scaledYHolder[0], config.fishHUDConfig.fishHUDColorConfig.fishHUDUniqueColor, shadows);
+                            drawContext.drawText(textRenderer, "ᴜɴɪꞯᴜᴇ " + othersSum, scaledX, scaledYHolder[0], 0xFFFFFF, shadows);
+                            drawContext.drawText(textRenderer, "ᴜɴɪꞯᴜᴇ ", scaledX, scaledYHolder[0], config.fishHUDConfig.fishHUDColorConfig.fishHUDUniqueColor, shadows);
                             scaledYHolder[0] += lineHeight;
 
                         }
                     }
                 }
 
-                if (config.otherHUDToggles.showItemFrameTooltip) {
+                if (config.otherHUDConfig.showItemFrameTooltip) {
                     if(LookTickHandler.instance().targetedItem != null) {
                         drawContext.drawItemTooltip(textRenderer, LookTickHandler.instance().targetedItem, screenWidth / 2, 50);
                     }
@@ -462,6 +514,10 @@ public class HudRenderer implements HudRenderCallback {
             } else if (currentPet != null) {
                 renderCurrentPet(drawContext);
             }
+        }
+
+        if(true) {
+            checkInventorySpace(client.player, drawContext);
         }
     }
 }
